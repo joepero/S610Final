@@ -2,9 +2,6 @@
 # Remove all rows containing missing data in your data set
 # Remember to rename response and predictor variables with a simple name
 
-age <- mABC$mABC_AGE
-score <- mABC$mABC_Balance.Component.StandardScore
-
 # Separate functions
 # X is a matrix of predictors with the first column is a vector of ones
 # arguments must be specified names and values
@@ -16,23 +13,23 @@ make_matrix_X <- function(...) {
 }  
 get_beta <- function(X, y) solve(t(X)%*%X) %*% t(X) %*% y
 get_yhat <- function(X, beta) X %*% beta
-get_sigma <- function(yhat, y) sqrt(sum((y-yhat)^2)/(nrow(X)-ncol(X)))
+get_sigma <- function(yhat, y, n, p) sqrt(sum((y-yhat)^2)/(n-p))
 get_se <- function(X, sigma) sqrt(diag(sigma^2*solve(t(X)%*%X)))
-t_test <- function(beta, se, X) {
+t_test <- function(beta, se, n, p) {
   t_stat <- beta/se
-  p_value <- 2*pt(t_stat, df = nrow(X)-ncol(X), lower.tail=FALSE)
+  p_value <- 2*pt(abs(t_stat), df = n-p, lower.tail = FALSE)
   result <- cbind(t_stat, p_value)
   colnames(result) <- c("t-stat", "p-value")
   return(result)
 }
 
-get_AIC <- function(y, yhat, n, num_p) {
-  k <- 1 + num_p # including x-coefficient, the intercept, and sigma
+get_AIC <- function(y, yhat, n, p) {
+  k <- 1 + p # including x-coefficient, the intercept, and sigma
   logLik_2 <- n*(log(2*pi)+1+log((sum((y-yhat)^2)/n))) # -2log(L)
   if (n/k >= 40) {
     AIC <- 2*k + logLik_2
   } else {
-    AIC <- 2*k + logLik_2 + (2*k^2+2*k)/(n-k-1)
+    AIC <- 2*k + logLik_2 + (2*k^2+2*k)/(n-k-1) # AICc
   }
   return(AIC)
 }
@@ -52,10 +49,10 @@ step_func <- function(y, ...) {
   # coefficient estimate summary
   beta <- get_beta(X,y)
   yhat <- get_yhat(X,beta)
-  sigma <- get_sigma(yhat, y)
+  sigma <- get_sigma(yhat, y, n, p)
   se <- get_se(X, sigma)
-  t_stat <- t_test(beta, se, X)[,1]
-  p_value <- t_test(beta, se, X)[,2]
+  t_stat <- t_test(beta, se, n, p)[,1]
+  p_value <- t_test(beta, se, n, p)[,2]
   
   # calculate AIC of the current and AIC of "if-drop" models
   AIC <- get_AIC(y, yhat, n, p)
