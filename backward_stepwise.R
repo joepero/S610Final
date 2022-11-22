@@ -1,9 +1,19 @@
 ## Note:
 # Remove all rows containing missing data in your data set
+# Remember to rename response and predictor variables with a simple name
 
+age <- mABC$mABC_AGE
+score <- mABC$mABC_Balance.Component.StandardScore
 
 # Separate functions
-make_matrix_X <- function(...) cbind(1,...) # X is a matrix of predictors with the first column is a vector of ones
+# X is a matrix of predictors with the first column is a vector of ones
+# arguments must be specified names and values
+make_matrix_X <- function(...) {
+  names <- as.list(match.call())[-1] %>% names() # extract arguments' name
+  X <- cbind(1,...)
+  colnames(X) <- c("(Intercept)", names)
+  return(X)
+}  
 get_beta <- function(X, y) solve(t(X)%*%X) %*% t(X) %*% y
 get_yhat <- function(X, beta) X %*% beta
 get_sigma <- function(yhat, y) sqrt(sum((y-yhat)^2)/(nrow(X)-ncol(X)))
@@ -27,18 +37,49 @@ get_AIC <- function(y, yhat, n, num_p) {
   return(AIC)
 }
 
-# test function
+# step function
 # inputs of this function are: y (response vector), x_i,...,x_p respectively.
 # Note that if you wanna check the result with lm function, you have to place x_i,...,x_p in the same order as a model in lm
-test_func <- function(y, ...) {
+# ... are predictor inputs
+# ... must have names and values
+# for better display, recommend to use this format step_func((named_response_vector), (desire_predictor_name_i)=(predictor_value_i))
+step_func <- function(y, ...) {
+  name_y <- deparse(substitute(y))
   X <- make_matrix_X(...)
   n <- nrow(X)
   p <- ncol(X)
+  
+  # coefficient estimate summary
   beta <- get_beta(X,y)
   yhat <- get_yhat(X,beta)
+  sigma <- get_sigma(yhat, y)
+  se <- get_se(X, sigma)
+  t_stat <- t_test(beta, se, X)[,1]
+  p_value <- t_test(beta, se, X)[,2]
+  
+  # calculate AIC of the current and AIC of "if-drop" models
   AIC <- get_AIC(y, yhat, n, p)
-  return(AIC)
+  list_AIC <- vector(mode = "list", length = p)
+  for (i in 1:p) {
+    list_AIC[[i]] <- X[,-i]
+  }
+  next_AIC <- vector("numeric", p)
+  for (j in 1:p) {
+    X_j <- list_AIC[[j]]
+    beta_j <- get_beta(X_j, y)
+    yhat_j <- get_yhat(X_j, beta_j)
+    next_AIC[j] <- get_AIC(y, yhat_j, n, p-1)
+  }
+
+  
+  # create a result table and display it
+  result <- cbind(beta, se, t_stat, p_value, next_AIC)
+  colnames(result) <- c("Est", "se", "t-stat", "p-value", "AIC")
+  
+  cat("Formula:", name_y, "=", paste(colnames(X)[-1], collapse=" + "), "\nAIC =", AIC, "\n")
+  print(result)
 }
+
 
 # test function
 test <- function () {
