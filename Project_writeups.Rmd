@@ -1,0 +1,69 @@
+---
+title: "BACKWARD STEPWISE SELECTION FUNCTION"
+author: "Nam Nguyen & Joel Robles"
+date: '2022-12-06'
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+source("backward_stepwise.R")
+```
+
+## Objectives for the project:
+
+### What do you want your software to do?
+
+In regression modeling, building a model with many variables including irrelevant ones will lead to a needlessly complex model. Two solutions to this problem are forward stepwise selection and backward stepwise selection which are two ways of selecting important variables to get a simple and easily interpretable model. The purpose of this project is to implement backward stepwise selection in which you fit a sequence of models by removing the least significant variables one after the other until some stopping criterion is reached. 
+
+### How will you know it is doing it correctly?
+
+The result will be compared to the built-in backward stepwise function in R to make sure it does what it is supposed to do.
+
+## Descriptions the design decisions you made:
+
+### Background knowledge
+
+Backward stepwise selection begins with a full model containing all variables under consideration, and then subtract to test its importance relative to overall results. The stopping criterion of the backward stepwise selection are a fixed value (e.g. 0.05) and Akaike Information Criterion (AIC). In each iteration, a t-test will be performed, the p-value and "if-variable-removed" AIC will be collected for each coefficient estimate in the current model.
+
+In multiple linear regression, y is a $n \times 1$ vector of response variable, X is a $n \times (p+1)$ matrix of predictor variables where the first column is a vector of ones. $\beta$ is a $n \times 1$ vector of coefficient estimates. $\epsilon$ is a vector of error term.
+
+Recall, the model in matrix notation is given by $$y = X\beta+\epsilon$$ where $\epsilon \sim N(0,\sigma^2)$
+
+Also,
+
+$$\hat \beta = (X'X)^{-1}X'y$$
+
+$$\hat y = X \hat \beta$$
+
+$$se_{\hat \beta} = \sqrt{\sigma^2 (X'X)}$$
+
+The t-statistic and p-value of significant test for each coefficient estimate are also give as below,
+
+$$T = \frac{\hat \beta_i}{se_{\hat \beta_i}}$$
+
+$$p\_value = P(t \geq |T|)$$
+
+Our model also uses AIC value to select the best model. Given a collection of models for the data, AIC estimates the quality of each model, relative to each of the other models. The model with lower AIC is considered the best model among other ones.
+
+AIC is computed by $$AIC = 2k - 2log\_likelihood$$
+
+When the sample size is small, there is a substantial probability that AIC will select models that have too many parameters, i.e. that AIC will overfit. To address such potential overfitting, AICc was developed: AICc is AIC with a correction for small sample sizes.
+
+The formula of AICc is $$AICc = AIC + \frac{2k^2+2k}{n-k-1}$$
+
+The backward stepwise selection will stop if the p-values of all remaining estimates are less than 0.05. At the same time, AIC of "if-removed-variable" model are computed and compared to the current model. If the individual AIC of remaining variables is larger than AIC of the current model, the backward stepwise selection will stop and return the final model.
+
+### What are the primary functions? What arguments do they take, and what do they return?
+
+There are two primary functions, step_func and bws_selection, which will take a response variable and all predictor variables you would like fit a model. 
+
+The step_func function plays a role in displaying a summary table in each iteration. The summary table includes the formula, AIC value, and a summary analysis of the current model. The summary analysis consists of coefficient estimates, corresponding standard errors, t-statistics of significant test, corresponding p-values, and AIC values indicating the next values it should be if you remove the related variables out of the current model.
+
+The bws_selection function is so-called the result-displaying function since it displays all the results of each iteration until stopping criterion is reached. In order to perform the task, it will loops through the summary analysis of step_func function until p-values of all remaining variables are small enough or AIC of "next reduced models" are larger than the current model. After that, it will return the final model which contains all important variables and their cofficient estimates.
+
+Other functions have a task of computing whatever are needed for step_func function. 
+
+## Evidence that your code does what it should: This should be in the form of tests of the functions that you wrote: tell us what the test should return and show that it does in fact return the expected results.
+
+
