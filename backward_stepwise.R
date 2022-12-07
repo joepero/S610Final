@@ -1,20 +1,20 @@
-## Note:
-# Remove all rows containing missing data in your data set
-# Remember to rename response and predictor variables with a simple name
+library(tidyverse)
+options(scipen = 1) # display numbers
 
 # Separate functions
 # X is a matrix of predictors with the first column is a vector of ones
-# arguments must be specified names and values
-make_matrix_X <- function(...) {
-  names <- as.list(match.call())[-1] %>% names() # extract arguments' name
-  X <- cbind(1,...)
-  colnames(X) <- c("(Intercept)", names)
+# subset is a dataframe containing all predictors under consideration
+make_matrix_X <- function(subset) {
+  X <- cbind(Intercept = rep(1, nrow(subset)), subset[,2:ncol(subset)])
+  names <- colnames(X)
+  X <- matrix(unlist(X), nrow=nrow(subset)) # convert to matrix to perform calculation later
+  colnames(X) <- names
   return(X)
 }  
-get_beta <- function(X, y) solve(t(X)%*%X) %*% t(X) %*% y
+get_beta <- function(X, y) solve(t(X)%*%X, tol=1e-17) %*% t(X) %*% y
 get_yhat <- function(X, beta) X %*% beta
 get_sigma <- function(yhat, y, n, p) sqrt(sum((y-yhat)^2)/(n-p))
-get_se <- function(X, sigma) sqrt(diag(sigma^2*solve(t(X)%*%X)))
+get_se <- function(X, sigma) sqrt(diag(sigma^2*solve(t(X)%*%X, tol=1e-17)))
 t_test <- function(beta, se, n, p) {
   t_stat <- beta/se
   p_value <- 2*pt(abs(t_stat), df = n-p, lower.tail = FALSE)
@@ -35,16 +35,10 @@ get_AIC <- function(y, yhat, n, p) {
 }
 
 # step function
-# inputs of this function are: y (response vector), x_i,...,x_p respectively.
-# Note that if you wanna check the result with lm function, you have to place x_i,...,x_p in the same order as a model in lm
-# ... are predictor inputs
-# ... must have names and values
-# for better display, recommend to use this format step_func((named_response_vector), (desire_predictor_name_i)=(predictor_value_i))
-step_func <- function(y, ...) {
-  name_y <- deparse(substitute(y))
-  X <- make_matrix_X(...)
-  n <- nrow(X)
-  p <- ncol(X)
+# inputs of this function are: y (response vector), X (matrix of predictors)
+step_func <- function(y,X) {
+  n <- nrow(X) # number of observations
+  p <- ncol(X) # number of parameters
   
   # coefficient estimate summary
   beta <- get_beta(X,y)
@@ -72,18 +66,48 @@ step_func <- function(y, ...) {
   # create a result table and display it
   result <- cbind(beta, se, t_stat, p_value, next_AIC)
   colnames(result) <- c("Est", "se", "t-stat", "p-value", "AIC")
-  
-  cat("Formula:", name_y, "=", paste(colnames(X)[-1], collapse=" + "), "\nAIC =", AIC, "\n")
-  print(result)
-}
-
-
-# test function
-test <- function () {
-  
+  table <- list(AIC = AIC, summary = result)
+  return(table)
 }
 
 # main function
-bws_selection <- function() {
+# Notes:
+# Remove all missing values from your data
+# Input data is a dataframe whose the first column is response variable and the remaining columns are predictor variables
+# Suggest to name columns of the data for better display
+bws_selection <- function(data) {
+  # get response vector and matrix of predictors
+  y <- data[,1]
+  X <- make_matrix_X(data[,2:ncol(data)])
   
+  t <- 1 # step count
+  checkCondition <- TRUE
+  stepResult <- step_func(y,X) # step 1 result
+  
+  # loop through each step
+  while (checkCondition) {
+    # print out the formula and AIC of current model
+    cat("Step", t, ": \n", "Formula:", colnames(data)[1], "=", paste(colnames(X)[!colnames(X) %in% "Intercept"], collapse=" + "), "\nAIC =", stepResult$AIC, "\n")
+    # summary statistic of the current model
+    print(stepResult$summary)
+    cat("\n")
+    cat(strrep("-", 25))
+    cat("\n")
+    # get an index at which "if-drop" AIC is smallest
+    minAIC <- which(stepResult$summary[,5] == min(stepResult$summary[,5]))
+    # compare AIC
+    if (stepResult$summary[minAIC,5] < stepResult$AIC) {
+      # remove the variable whose "if-drop" AIC is smallest and smaller than the current AIC
+      X <- X[,-minAIC]
+      # obtain the new summary statistic
+      stepResult <- step_func(y,X)
+      t <- t + 1 # next step count
+    } else {
+      # if all "if-drop" AIC is larger than the current AIC, stop looping
+      checkCondition <- FALSE
+    }
+  }
+  # print out the final model containing coefficient estimates
+  cat("Final model: \n", "Formula:", colnames(data)[1], "=", paste(colnames(X)[!colnames(X) %in% "Intercept"], collapse=" + "), "\n")
+  print(stepResult$summary[,1])
 }
