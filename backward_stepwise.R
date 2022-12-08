@@ -5,7 +5,7 @@ options(scipen = 1) # display numbers
 # X is a matrix of predictors with the first column is a vector of ones
 # subset is a dataframe containing all predictors under consideration
 make_matrix_X <- function(subset) {
-  X <- cbind(Intercept = rep(1, nrow(subset)), subset[,2:ncol(subset)])
+  X <- cbind(Intercept = rep(1, nrow(subset)), subset)
   names <- colnames(X)
   X <- matrix(unlist(X), nrow=nrow(subset)) # convert to matrix to perform calculation later
   colnames(X) <- names
@@ -61,7 +61,7 @@ step_func <- function(y,X) {
     yhat_j <- get_yhat(X_j, beta_j)
     next_AIC[j] <- get_AIC(y, yhat_j, n, p-1)
   }
-
+  next_AIC[1] <- NA
   
   # create a result table and display it
   result <- cbind(beta, se, t_stat, p_value, next_AIC)
@@ -73,12 +73,15 @@ step_func <- function(y,X) {
 # main function
 # Notes:
 # Remove all missing values from your data
-# Input data is a dataframe whose the first column is response variable and the remaining columns are predictor variables
+# Input data is a formula in format "response ~ predictor1 + predictor2 + ..." and a dataset
+# The formula has to be a string
 # Suggest to name columns of the data for better display
-bws_selection <- function(data) {
+bws_selection <- function(formula, data) {
   # get response vector and matrix of predictors
-  y <- data[,1]
-  X <- make_matrix_X(data[,2:ncol(data)])
+  var <- strsplit(formula, "\\~|\\+")[[1]] # extract variable names
+  var <- gsub(" ", "", var) # remove white spaces
+  y <- data[,var[1]]
+  X <- make_matrix_X(data[var[2:length(var)]])
   
   t <- 1 # step count
   checkCondition <- TRUE
@@ -87,18 +90,18 @@ bws_selection <- function(data) {
   # loop through each step
   while (checkCondition) {
     # print out the formula and AIC of current model
-    cat("Step", t, ": \n", "Formula:", colnames(data)[1], "=", paste(colnames(X)[!colnames(X) %in% "Intercept"], collapse=" + "), "\nAIC =", stepResult$AIC, "\n")
+    cat("Step", t, ":", "\nFormula:", var[1], "~", paste(colnames(X)[!colnames(X) %in% "Intercept"], collapse=" + "), "\nAIC =", stepResult$AIC, "\n")
     # summary statistic of the current model
     print(stepResult$summary)
     cat("\n")
     cat(strrep("-", 25))
     cat("\n")
     # get an index at which "if-drop" AIC is smallest
-    minAIC <- which(stepResult$summary[,5] == min(stepResult$summary[,5]))
+    minAIC <- which(stepResult$summary[-1,5] == min(stepResult$summary[-1,5]))
     # compare AIC
-    if (stepResult$summary[minAIC,5] < stepResult$AIC) {
+    if (stepResult$summary[minAIC+1,5] < stepResult$AIC) {
       # remove the variable whose "if-drop" AIC is smallest and smaller than the current AIC
-      X <- X[,-minAIC]
+      X <- X[,-(minAIC+1)]
       # obtain the new summary statistic
       stepResult <- step_func(y,X)
       t <- t + 1 # next step count
@@ -108,6 +111,7 @@ bws_selection <- function(data) {
     }
   }
   # print out the final model containing coefficient estimates
-  cat("Final model: \n", "Formula:", colnames(data)[1], "=", paste(colnames(X)[!colnames(X) %in% "Intercept"], collapse=" + "), "\n")
+  cat("Final model:", "\nFormula:", var[1], "~", paste(colnames(X)[!colnames(X) %in% "Intercept"], collapse=" + "), "\n")
   print(stepResult$summary[,1])
 }
+
