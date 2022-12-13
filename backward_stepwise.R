@@ -1,4 +1,5 @@
 library(tidyverse)
+library(alr4)
 options(scipen = 1) # display numbers
 
 # Separate functions
