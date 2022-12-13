@@ -14,7 +14,7 @@ source("backward_stepwise.R")
 
 ### What do you want your software to do?
 
-In regression modeling, building a model with many variables including irrelevant ones will lead to a needlessly complex model. Two solutions to this problem are forward stepwise selection and backward stepwise selection which are two ways of selecting important variables to get a simple and easily interpretable model. The purpose of this project is to implement backward stepwise selection in which you fit a sequence of models by removing the least significant variables one after the other until some stopping criterion is reached. 
+When it comes to regression modeling, building a model with many variables, including irrelevant ones, will lead to a needlessly complex model. In order to alleviate this issue, there are two solutions to this problem, those being forward stepwise selection and backward stepwise selection. Both of these methods allow us to select the important variables for the purpose of obtaining a simple and easiy to interpret model.  Therefore, the purpose of this project is to implement a. backward stepwise selection in which you fit a sequence of models by removing the least significant variables one after the other until some stopping criterion is reached and the final model is obtained.
 
 ### How will you know it is doing it correctly?
 
@@ -24,7 +24,7 @@ The result will be compared to the built-in backward stepwise function in R to m
 
 ### Background knowledge
 
-Backward stepwise selection begins with a full model containing all variables under consideration, and then subtract to test its importance relative to overall results. The stopping criterion of the backward stepwise selection are a fixed value (e.g. 0.05) and Akaike Information Criterion (AIC). In each iteration, a t-test will be performed, the p-value and "if-variable-removed" AIC will be collected for each coefficient estimate in the current model.
+Backward stepwise selection begins with a full model containing all variables under consideration, and then subtract one variable to test its importance relative to overall results. The stopping criterion of the backward stepwise selection are a fixed value (e.g. 0.05) and Akaike Information Criterion (AIC). In each iteration, a t-test will be performed, the p-value and "if-variable-removed" AIC will be collected for each coefficient estimate in the current model.
 
 In multiple linear regression, y is a $n \times 1$ vector of response variable, X is a $n \times (p+1)$ matrix of predictor variables where the first column is a vector of ones. $\beta$ is a $n \times 1$ vector of coefficient estimates. $\epsilon$ is a vector of error term.
 
@@ -44,7 +44,7 @@ $$T = \frac{\hat \beta_i}{se_{\hat \beta_i}}$$
 
 $$p\_value = P(t \geq |T|)$$
 
-Our model also uses AIC value to select the best model. Given a collection of models for the data, AIC estimates the quality of each model, relative to each of the other models. The model with lower AIC is considered the best model among other ones.
+Our model also uses the AIC value to select the best model. Given a collection of models for the data, AIC estimates the quality of each model, relative to each of the other models. In other words, the model with lower AIC is considered the best model among other ones.
 
 AIC is computed by $$AIC = 2k - 2log\_likelihood$$
 
@@ -56,14 +56,24 @@ The backward stepwise selection will stop if the p-values of all remaining estim
 
 ### What are the primary functions? What arguments do they take, and what do they return?
 
-There are two primary functions, step_func and bws_selection, which will take a response variable and all predictor variables you would like fit a model. 
+Within our function script, there are two primary functions and two secondary functions (functions that help the primary functions). The primary function are  step_func and bws_selection, which will take a response variable and all predictor variables you would like fit a model. 
 
-The step_func function plays a role in displaying a summary table in each iteration. The summary table includes the formula, AIC value, and a summary analysis of the current model. The summary analysis consists of coefficient estimates, corresponding standard errors, t-statistics of significant test, corresponding p-values, and AIC values indicating the next values it should be if you remove the related variables out of the current model.
+The step_func function plays a role in displaying a summary table in each iteration. This function takes two arugments, the first beig the response variable and the second being a matrix of predictor variables from the make_maktrix function. The summary table includes the formula, AIC value, and a summary analysis of the current model. The summary analysis consists of coefficient estimates, corresponding standard errors, t-statistics of significant test, corresponding p-values, and AIC values indicating the next values it should be if you remove the related variables out of the current model. 
 
-The bws_selection function is so-called the result-displaying function since it displays all the results of each iteration until stopping criterion is reached. In order to perform the task, it will loops through the summary analysis of step_func function until p-values of all remaining variables are small enough or AIC of "next reduced models" are larger than the current model. After that, it will return the final model which contains all important variables and their cofficient estimates.
-
-Other functions have a task of computing whatever are needed for step_func function. 
+The bws_selection function is so-called the result-displaying function since it displays all the results of each iteration until stopping criterion is reached. For the arguments this function takes two, the first one being a string argument of the formula that the functioin will perform an backwards stepwise regression on. As for the second function, it must be the dataset itself in which the names of the variables must be present in the string argument. In order to perform the task, it will loops through the summary analysis of step_func function until p-values of all remaining variables are small enough or AIC of "next reduced models" are larger than the current model. After that, it will return the final model which contains all important variables and their coefficient estimates. 
 
 ## Evidence that your code does what it should: This should be in the form of tests of the functions that you wrote: tell us what the test should return and show that it does in fact return the expected results.
+
+As with all function write ups, it is important to test the functions created in order to ensure that they are working as expected. For the purposes of testing, a total of four tests were done to ensure each aspect of the function is working as intended. In addition, we will use the built dataset Fuel Consumption found in R for the purpose of comparing how our function works on a real dataset. First, we must test the make_matrix function, this function will take all the variables except for the response variable, which in this case will be FuelC (fuel consumption). For testing, used the testthat package in R to check to see if our function does in fact return matrix. Given that our test outcome resulted in a PASS we can confidently say that our make_matrix function does work as instead in creating a matrix of the predictor variables. Next, we tested the get_AIC portion of the step_func as a way to identify if one of the main criteria for backwards stepwise regression (AIC) is being calculated correctly. Once again, we used testthat package to check if the AIC from step_func equals the calculated AIC. After seeing that the test resulted in a PASS  
+
+In order to test our two primary functions, we had to go with a more direct approach as trying to test the functions with testthat proved to be more of a hassle than necessary given our function does not display the final output and model the same way that functions such as summary(lm(X)) and step(X, direction “backwards”) would. For the step_func we compared the output to the step function in R to see if our results are the same: 
+
+As we can see, the results our step_func function and the summary of the lm function in R result in the same output. In other words, our step_func yields us the expected results from creating a linear model function and printing out a summary output, proving that step_func works as intended.  
+
+The same method of testing will be done with the bws_selection function. In order to test this function we will compare the output to the function normal used for backwards stepwise regression, the step function. Below are the results of the two compared side by side: 
+
+From the two outputs we can see that the bws_selection function does indeed give us the output we inteded, meaning that it does perform a backwards stepwise regression as intended. 
+
+In summary, our main objective was to create a working function that would perform a backward stepwise regression and did so with the Fuel2001 dataset acting as a testing dataset. Our final output as described above showed that drivers, miles and tax were all relevant in predicting fuel consumption, this is exactly what the step function in R concluded meaning that we successfully accomplished our main objective. If we were to come back and improve on our function, we would like to allow for the function to consider things such as interaction effect and/or polynomial effects seeing as right now the function can only handle basic multinomial linear regression models. With that being said, we are content with the current progress of our backwards stepwise function and hope to be able to use and improve upon it in the future. 
 
 
