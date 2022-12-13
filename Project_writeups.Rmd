@@ -52,7 +52,8 @@ When the sample size is small, there is a substantial probability that AIC will 
 
 The formula of AICc is $$AICc = AIC + \frac{2k^2+2k}{n-k-1}$$
 
-The backward stepwise selection will stop if the p-values of all remaining estimates are less than 0.05. At the same time, AIC of "if-removed-variable" model are computed and compared to the current model. If the individual AIC of remaining variables is larger than AIC of the current model, the backward stepwise selection will stop and return the final model.
+The backward stepwise selection will stop if the p-values of all remaining estimates are less than the alpha value (0.05). In conjunction, the AIC of the “if-removed-variable” model are also computed and then compared to the current model. Finally, if the individual AIC of remaining variables is larger than AIC of the current model, the backward stepwise selection will stop and return the final model along with the variables deemed to be relevant in predicting the response variable.
+
 
 ### What are the primary functions? What arguments do they take, and what do they return?
 
