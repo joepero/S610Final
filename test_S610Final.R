@@ -1,4 +1,4 @@
-setwd("~/Desktop/S610")
+
 source("backward_stepwise.R")
 
 #testing to see if make_matrix_X returns a matrix
